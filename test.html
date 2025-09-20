@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        pre { background: #f4f4f4; padding: 10px; }
+        button { padding: 10px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Fraud Detection API Test</h1>
+    <button onclick="fetchStats()">Fetch Stats</button>
+    <button onclick="sendTransaction()">Send Transaction</button>
+    <button onclick="connectWebSocket()">Connect WebSocket</button>
+
+    <h2>API Stats Response:</h2>
+    <pre id="stats">Click "Fetch Stats" to load...</pre>
+
+    <h2>WebSocket Messages:</h2>
+    <pre id="ws-messages">Click "Connect WebSocket" to start...</pre>
+
+    <script>
+        async function fetchStats() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/stats/overview');
+                const data = await response.json();
+                document.getElementById('stats').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('stats').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function sendTransaction() {
+            try {
+                const transaction = {
+                    user_id: "test_user_" + Date.now(),
+                    amount: Math.random() * 1000 + 100,
+                    merchant: "TestStore",
+                    category: "online",
+                    location: "TestCity",
+                    device_id: "device_" + Math.floor(Math.random() * 10),
+                    transaction_type: "purchase"
+                };
+
+                const response = await fetch('http://localhost:8000/api/v1/transaction/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(transaction)
+                });
+                const data = await response.json();
+                alert('Transaction sent! Fraud score: ' + data.fraud_score.toFixed(3));
+                fetchStats(); // Refresh stats
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function connectWebSocket() {
+            const ws = new WebSocket('ws://localhost:8000/ws/live');
+            const messagesDiv = document.getElementById('ws-messages');
+
+            ws.onopen = () => {
+                messagesDiv.textContent = 'WebSocket connected!\n';
+            };
+
+            ws.onmessage = (event) => {
+                messagesDiv.textContent += event.data + '\n';
+                if (messagesDiv.textContent.length > 1000) {
+                    messagesDiv.textContent = messagesDiv.textContent.slice(-1000);
+                }
+            };
+
+            ws.onerror = (error) => {
+                messagesDiv.textContent += 'WebSocket error: ' + error + '\n';
+            };
+
+            ws.onclose = () => {
+                messagesDiv.textContent += 'WebSocket disconnected\n';
+            };
+        }
+
+        // Auto-fetch stats on load
+        fetchStats();
+    </script>
+</body>
+</html>
